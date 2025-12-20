@@ -1,9 +1,9 @@
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
-import { TaskCreate } from "./endpoints/taskCreate";
-import { TaskDelete } from "./endpoints/taskDelete";
-import { TaskFetch } from "./endpoints/taskFetch";
-import { TaskList } from "./endpoints/taskList";
+import { TaskCreate } from "./routes/taskCreate";
+import { TaskDelete } from "./routes/taskDelete";
+import { TaskFetch } from "./routes/taskFetch";
+import { TaskList } from "./routes/taskList";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
