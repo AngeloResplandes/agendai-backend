@@ -5,6 +5,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
+    "dev:remote": "wrangler dev --remote",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types",
     "generate": "drizzle-kit generate",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@types/node": "22.13.0",
     "@types/service-worker-mock": "^2.0.4",
+    "better-sqlite3": "^12.5.0",
     "drizzle-kit": "^0.31.8",
     "wrangler": "^4.56.0"
   }

@@ -14,10 +14,13 @@
 		{
 			"binding": "DB",
 			"database_name": "agendai-db",
-			"database_id": "2f567edf-97cc-49e6-997c-56a956a49d41",
+			"database_id": "2ea43afd-8f2b-4133-8df3-98965566ce0c",
 			"migrations_dir": "drizzle/migrations"
 		}
-	]
+	],
+	"vars": {
+		"JWT_SECRET": "dev-secret-change-in-production"
+	}
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

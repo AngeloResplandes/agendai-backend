@@ -1,26 +1,50 @@
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
-import { TaskCreate } from "./routes/taskCreate";
-import { TaskDelete } from "./routes/taskDelete";
-import { TaskFetch } from "./routes/taskFetch";
-import { TaskList } from "./routes/taskList";
+import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
+import { registerRoutes } from "./routes/main";
 
-// Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
 
-// Setup OpenAPI registry
+app.use("*", cors({
+	origin: (origin) => {
+		const allowedOrigins = [
+			"http://localhost:3000",
+			"http://localhost:5173",
+			"https://agendai-backend.agendai-api-dev.workers.dev",
+			// Adicione o URL do seu frontend aqui
+		];
+		if (!origin || allowedOrigins.includes(origin)) {
+			return origin || "*";
+		}
+		return null;
+	},
+	allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+	allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+	exposeHeaders: ["Content-Length", "X-Request-Id"],
+	credentials: true,
+	maxAge: 86400,
+}));
+
+app.use("*", secureHeaders({
+	xFrameOptions: "DENY",
+	xContentTypeOptions: "nosniff",
+	referrerPolicy: "strict-origin-when-cross-origin",
+	crossOriginEmbedderPolicy: false,
+	crossOriginResourcePolicy: false,
+	crossOriginOpenerPolicy: false,
+}));
+
+app.use("*", async (c, next) => {
+	const requestId = crypto.randomUUID();
+	c.res.headers.set("X-Request-Id", requestId);
+	await next();
+});
+
 const openapi = fromHono(app, {
 	docs_url: "/",
 });
 
-// Register OpenAPI endpoints
-openapi.get("/api/tasks", TaskList);
-openapi.post("/api/tasks", TaskCreate);
-openapi.get("/api/tasks/:taskSlug", TaskFetch);
-openapi.delete("/api/tasks/:taskSlug", TaskDelete);
+registerRoutes(openapi);
 
-// You may also register routes for non OpenAPI directly on Hono
-// app.get('/test', (c) => c.text('Hono!'))
-
-// Export the Hono app
 export default app;

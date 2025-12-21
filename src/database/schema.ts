@@ -9,6 +9,3 @@ export const user = sqliteTable("user", {
     createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date().toISOString()),
 });
-
-export type User = typeof user.$inferSelect;
-export type NewUser = typeof user.$inferInsert;
