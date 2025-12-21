@@ -11,7 +11,7 @@ app.use("*", cors({
 		const allowedOrigins = [
 			"http://localhost:3000",
 			"http://localhost:5173",
-			"https://agendai-backend.agendai-api-dev.workers.dev",
+			"https://agendai-backend.angeloresplandes.workers.dev",
 			// Adicione o URL do seu frontend aqui
 		];
 		if (!origin || allowedOrigins.includes(origin)) {
