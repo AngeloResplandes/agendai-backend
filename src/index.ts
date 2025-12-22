@@ -43,6 +43,22 @@ app.use("*", async (c, next) => {
 
 const openapi = fromHono(app, {
 	docs_url: "/",
+	schema: {
+		info: {
+			title: "AgendAI API",
+			version: "1.0.0",
+			description: "API para o sistema AgendAI",
+		},
+		security: [{ bearerAuth: [] }],
+	},
+});
+
+// Add security scheme to OpenAPI spec
+openapi.registry.registerComponent("securitySchemes", "bearerAuth", {
+	type: "http",
+	scheme: "bearer",
+	bearerFormat: "JWT",
+	description: "Insira seu token JWT. Faça login em /api/auth/signin para obter o token.",
 });
 
 registerRoutes(openapi);

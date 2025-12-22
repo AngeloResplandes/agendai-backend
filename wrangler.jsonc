@@ -14,12 +14,14 @@
 		{
 			"binding": "DB",
 			"database_name": "agendai-db",
-			"database_id": "8c9ad766-acca-46a1-8230-1cd7e97f15c8",
+			"database_id": "99cf86a9-38c9-499f-a6a4-66df863ce3fd",
 			"migrations_dir": "drizzle/migrations"
 		}
 	],
 	"vars": {
-		"JWT_SECRET": "dev-secret-change-in-production"
+		"JWT_SECRET": "dev-secret-change-in-production",
+		"RESEND_API_KEY": "re_exq7SvzT_74PW5BL3iLpHs1J4Wbjv3otv",
+		"EMAIL_FROM": "onboarding@resend.dev"
 	}
 	/**
 	 * Smart Placement

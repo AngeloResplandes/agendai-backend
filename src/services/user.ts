@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { createDb, schema } from "../lib/drizzle";
 import { hashPassword, verifyPassword } from "../lib/password";
-import { LoginUser, RegisterUser } from "../types/types";
+import type { LoginUser, RegisterUser, UpdateUser, DeleteUser } from "../types/types";
 
 export const login = async (loginUser: LoginUser) => {
     const drizzle = createDb(loginUser.db);
@@ -22,12 +22,19 @@ export const login = async (loginUser: LoginUser) => {
     return user;
 };
 
-
 export const findUserByEmail = async (db: D1Database, email: string) => {
     const drizzle = createDb(db);
 
     return drizzle.query.user.findFirst({
         where: eq(schema.user.email, email),
+    });
+};
+
+export const findUserById = async (db: D1Database, userId: string) => {
+    const drizzle = createDb(db);
+
+    return drizzle.query.user.findFirst({
+        where: eq(schema.user.id, userId),
     });
 };
 
@@ -46,7 +53,47 @@ export const createUser = async (registerUser: RegisterUser) => {
             id: schema.user.id,
             name: schema.user.name,
             email: schema.user.email,
+            role: schema.user.role,
         });
 
     return user;
+};
+
+export const updateUser = async (data: UpdateUser) => {
+    const drizzle = createDb(data.db);
+
+    const updateData: Record<string, unknown> = {};
+
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.role) updateData.role = data.role;
+    if (data.password) updateData.password = await hashPassword(data.password);
+
+    if (Object.keys(updateData).length === 0) {
+        return null;
+    }
+
+    const [user] = await drizzle
+        .update(schema.user)
+        .set(updateData)
+        .where(eq(schema.user.id, data.userId))
+        .returning({
+            id: schema.user.id,
+            name: schema.user.name,
+            email: schema.user.email,
+            role: schema.user.role,
+        });
+
+    return user;
+};
+
+export const deleteUser = async (data: DeleteUser) => {
+    const drizzle = createDb(data.db);
+
+    const result = await drizzle
+        .delete(schema.user)
+        .where(eq(schema.user.id, data.userId))
+        .returning({ id: schema.user.id });
+
+    return result.length > 0;
 };

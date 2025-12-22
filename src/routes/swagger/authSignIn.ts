@@ -31,6 +31,7 @@ export class AuthSignIn extends OpenAPIRoute {
                                 id: Str(),
                                 name: Str(),
                                 email: Str(),
+                                role: Str({ example: "free" }),
                             }),
                         }),
                     },
@@ -62,7 +63,7 @@ export class AuthSignIn extends OpenAPIRoute {
 
         return {
             token,
-            user: { id: user.id, name: user.name, email: user.email },
+            user: { id: user.id, name: user.name, email: user.email, role: user.role },
         };
     }
 }

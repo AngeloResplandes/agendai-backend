@@ -16,6 +16,7 @@
     "chanfana": "^2.6.3",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.6.20",
+    "resend": "^6.6.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

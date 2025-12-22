@@ -1,43 +1,39 @@
 import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext } from "../../types/types";
-import { findUserByEmail, createUser } from "../../services/user";
+import { resetPassword } from "../../services/passwordReset";
 
-export class AuthSignUp extends OpenAPIRoute {
+export class ResetPassword extends OpenAPIRoute {
     schema = {
         tags: ["Auth"],
-        summary: "User registration",
+        summary: "Reset password with token",
+        description: "Resets the user password after validating the token",
         request: {
             body: {
                 content: {
                     "application/json": {
                         schema: z.object({
-                            name: Str({ example: "John Doe" }),
                             email: Str({ example: "user@example.com" }),
-                            password: Str({ example: "password123" }),
+                            token: Str({ example: "123456" }),
+                            newPassword: Str({ example: "newPassword123" }),
                         }),
                     },
                 },
             },
         },
         responses: {
-            "201": {
-                description: "User created successfully",
+            "200": {
+                description: "Password reset successfully",
                 content: {
                     "application/json": {
                         schema: z.object({
-                            user: z.object({
-                                id: Str(),
-                                name: Str(),
-                                email: Str(),
-                                role: Str({ example: "free" }),
-                            }),
+                            message: Str(),
                         }),
                     },
                 },
             },
-            "409": {
-                description: "Email already in use",
+            "400": {
+                description: "Token is invalid or expired",
                 content: {
                     "application/json": {
                         schema: z.object({
@@ -51,15 +47,14 @@ export class AuthSignUp extends OpenAPIRoute {
 
     async handle(c: AppContext) {
         const data = await this.getValidatedData<typeof this.schema>();
-        const { name, email, password } = data.body;
+        const { email, token, newPassword } = data.body;
 
-        const existingUser = await findUserByEmail(c.env.DB, email);
-        if (existingUser) {
-            return c.json({ error: "Email já está em uso" }, 409);
+        const result = await resetPassword({ db: c.env.DB, email, token, newPassword });
+
+        if (!result.success) {
+            return c.json({ error: result.error }, 400);
         }
 
-        const user = await createUser({ db: c.env.DB, name, email, password });
-
-        return c.json({ user }, 201);
+        return { message: "Senha alterada com sucesso" };
     }
 }
