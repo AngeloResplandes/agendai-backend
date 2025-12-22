@@ -2,7 +2,8 @@ import type { GroqScheduleResponse } from "../types/types";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `Você é um assistente especializado em interpretar solicitações de agendamento em português brasileiro.
+const SYSTEM_PROMPT = `Seu nome é Lucy, você é um assistente especializado 
+em interpretar solicitações de agendamento em português brasileiro.
 Extraia as seguintes informações do texto do usuário:
 - title: título resumido da tarefa (máximo 50 caracteres)
 - description: descrição detalhada se houver informações adicionais (opcional)
@@ -20,7 +21,11 @@ Regras importantes:
 
 Responda APENAS com um JSON válido, sem nenhum texto adicional ou markdown.
 Exemplo de resposta:
-{"title": "Reunião com equipe", "description": null, "scheduledDate": "2025-12-23", "scheduledTime": "14:00", "priority": "medium"}`;
+{"title": "Reunião com equipe", 
+"description": null, 
+"scheduledDate": "2025-12-23", 
+"scheduledTime": "14:00", 
+"priority": "medium"}`;
 
 function getNextDayOfWeek(dayOfWeek: number, currentDate: Date): Date {
     const resultDate = new Date(currentDate);
@@ -78,22 +83,18 @@ export async function parseScheduleRequest(
             return { success: false, error: "Resposta vazia do modelo" };
         }
 
-        // Parse JSON response
         let parsed: GroqScheduleResponse;
         try {
-            // Remove possible markdown code blocks
             const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
             parsed = JSON.parse(cleanContent);
         } catch {
             return { success: false, error: `Falha ao interpretar resposta: ${content}` };
         }
 
-        // Validate required fields
         if (!parsed.title) {
             return { success: false, error: "Não foi possível extrair o título da tarefa" };
         }
 
-        // Build interpretation message
         let interpretation = `Criei a tarefa "${parsed.title}"`;
         if (parsed.scheduledDate) {
             interpretation += ` para ${parsed.scheduledDate}`;

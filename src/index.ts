@@ -53,7 +53,6 @@ const openapi = fromHono(app, {
 	},
 });
 
-// Add security scheme to OpenAPI spec
 openapi.registry.registerComponent("securitySchemes", "bearerAuth", {
 	type: "http",
 	scheme: "bearer",
