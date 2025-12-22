@@ -34,7 +34,6 @@ export class Schedule extends OpenAPIRoute {
                                 action: Str(),
                                 success: z.boolean(),
                                 task: TaskSchema.optional(),
-                                interpretation: Str(),
                                 error: Str().optional(),
                             })),
                             summary: Str(),
@@ -75,9 +74,10 @@ export class Schedule extends OpenAPIRoute {
             action: string;
             success: boolean;
             task?: unknown;
-            interpretation: string;
             error?: string;
         }> = [];
+
+        const interpretations: string[] = [];
 
         // Process each task
         for (let i = 0; i < result.data.tasks.length; i++) {
@@ -86,18 +86,18 @@ export class Schedule extends OpenAPIRoute {
             try {
                 const taskResult = await this.processTask(c, auth.userId, taskData);
                 const interpretation = generateHumanizedInterpretation(taskData, auth.userName, true);
+                interpretations.push(interpretation);
                 results.push({
                     action: taskData.action,
                     success: true,
                     task: taskResult,
-                    interpretation,
                 });
             } catch (error) {
                 const interpretation = generateHumanizedInterpretation(taskData, auth.userName, false);
+                interpretations.push(interpretation);
                 results.push({
                     action: taskData.action,
                     success: false,
-                    interpretation,
                     error: error instanceof Error ? error.message : String(error),
                 });
             }
@@ -111,7 +111,7 @@ export class Schedule extends OpenAPIRoute {
         let message: string;
         if (successCount === totalCount) {
             if (totalCount === 1) {
-                message = results[0].interpretation;
+                message = interpretations[0];
             } else {
                 message = `${firstName}, processei todas as ${totalCount} tarefas! 🎯 Sua agenda está atualizada.`;
             }
