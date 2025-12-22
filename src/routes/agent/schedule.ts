@@ -1,7 +1,7 @@
 import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext, GroqAgentTask } from "../../types/types";
-import { parseAgentRequest } from "../../services/groq";
+import { parseAgentRequest, generateHumanizedInterpretation } from "../../services/groq";
 import { createTask, findTaskByTitle, updateTask, deleteTask } from "../../services/task";
 import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
 import { TaskSchema, UnauthorizedResponse, BadRequestResponse, NotFoundResponse } from "../../schemas";
@@ -38,6 +38,7 @@ export class Schedule extends OpenAPIRoute {
                                 error: Str().optional(),
                             })),
                             summary: Str(),
+                            message: Str(),
                         }),
                     },
                 },
@@ -63,7 +64,11 @@ export class Schedule extends OpenAPIRoute {
         const result = await parseAgentRequest(groqApiKey, userMessage);
 
         if (result.success === false) {
-            return c.json({ success: false, error: result.error }, 400);
+            return c.json({
+                success: false,
+                error: result.error,
+                message: `Desculpe ${auth.userName.split(" ")[0]}, não entendi o que você quer fazer. Pode reformular? 🤔`
+            }, 400);
         }
 
         const results: Array<{
@@ -77,10 +82,10 @@ export class Schedule extends OpenAPIRoute {
         // Process each task
         for (let i = 0; i < result.data.tasks.length; i++) {
             const taskData = result.data.tasks[i];
-            const interpretation = result.interpretations[i];
 
             try {
                 const taskResult = await this.processTask(c, auth.userId, taskData);
+                const interpretation = generateHumanizedInterpretation(taskData, auth.userName, true);
                 results.push({
                     action: taskData.action,
                     success: true,
@@ -88,6 +93,7 @@ export class Schedule extends OpenAPIRoute {
                     interpretation,
                 });
             } catch (error) {
+                const interpretation = generateHumanizedInterpretation(taskData, auth.userName, false);
                 results.push({
                     action: taskData.action,
                     success: false,
@@ -99,12 +105,27 @@ export class Schedule extends OpenAPIRoute {
 
         const successCount = results.filter(r => r.success).length;
         const totalCount = results.length;
-        const summary = `${successCount}/${totalCount} tarefas processadas com sucesso`;
+        const firstName = auth.userName.split(" ")[0];
+
+        // Gerar mensagem final humanizada
+        let message: string;
+        if (successCount === totalCount) {
+            if (totalCount === 1) {
+                message = results[0].interpretation;
+            } else {
+                message = `${firstName}, processei todas as ${totalCount} tarefas! 🎯 Sua agenda está atualizada.`;
+            }
+        } else if (successCount === 0) {
+            message = `${firstName}, tive problemas com todas as tarefas. 😔 Pode tentar novamente?`;
+        } else {
+            message = `${firstName}, consegui processar ${successCount} de ${totalCount} tarefas. Algumas tiveram problemas.`;
+        }
 
         return c.json({
             success: successCount === totalCount,
             results,
-            summary,
+            summary: `${successCount}/${totalCount} tarefas processadas com sucesso`,
+            message,
         }, 200);
     }
 

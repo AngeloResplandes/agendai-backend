@@ -1,5 +1,6 @@
 import type { AppContext, JWTPayload } from "../types/types";
 import { verify } from "hono/jwt";
+import { findUserById } from "../services/user";
 
 /**
  * Extrai o userId do token JWT no header Authorization
@@ -22,14 +23,21 @@ export async function getUserIdFromToken(c: AppContext): Promise<string | null> 
 
 /**
  * Middleware que requer autenticação
- * @returns { userId } ou Response de erro 401
+ * @returns { userId, userName } ou null se não autenticado
  */
-export async function requireAuth(c: AppContext): Promise<{ userId: string } | null> {
+export async function requireAuth(c: AppContext): Promise<{ userId: string; userName: string } | null> {
     const userId = await getUserIdFromToken(c);
     if (!userId) {
         return null;
     }
-    return { userId };
+
+    // Buscar nome do usuário
+    const user = await findUserById(c.env.DB, userId);
+    if (!user) {
+        return null;
+    }
+
+    return { userId, userName: user.name };
 }
 
 /**
