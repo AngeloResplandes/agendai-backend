@@ -19,8 +19,6 @@
 		}
 	],
 	"vars": {
-		"JWT_SECRET": "dev-secret-change-in-production",
-		"RESEND_API_KEY": "re_exq7SvzT_74PW5BL3iLpHs1J4Wbjv3otv",
 		"EMAIL_FROM": "onboarding@resend.dev"
 	}
 	/**
