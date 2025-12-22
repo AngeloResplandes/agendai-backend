@@ -30,6 +30,22 @@ export const getTasksByUserId = async (db: D1Database, userId: string) => {
     });
 };
 
+export const findTaskByTitle = async (db: D1Database, userId: string, searchTitle: string) => {
+    const drizzle = createDb(db);
+
+    const tasks = await drizzle.query.task.findMany({
+        where: eq(schema.task.userId, userId),
+        orderBy: (task, { desc }) => [desc(task.createdAt)],
+    });
+
+    // Search for task with title containing the search term (case insensitive)
+    const searchLower = searchTitle.toLowerCase();
+    return tasks.find(task =>
+        task.title.toLowerCase().includes(searchLower) ||
+        (task.description && task.description.toLowerCase().includes(searchLower))
+    );
+};
+
 export const getTaskById = async (db: D1Database, taskId: string, userId: string) => {
     const drizzle = createDb(db);
 

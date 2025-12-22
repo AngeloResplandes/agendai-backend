@@ -1,47 +1,53 @@
-import type { GroqScheduleResponse } from "../types/types";
+import type { GroqAgentResponse, GroqAgentTask } from "../types/types";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `Seu nome é Lucy, você é um assistente especializado 
-em interpretar solicitações de agendamento em português brasileiro.
-Extraia as seguintes informações do texto do usuário:
-- title: título resumido da tarefa (máximo 50 caracteres)
-- description: descrição detalhada se houver informações adicionais (opcional)
-- scheduledDate: data no formato YYYY-MM-DD (se mencionada)
-- scheduledTime: hora no formato HH:MM (se mencionada)
-- priority: "low", "medium" ou "high" baseado no contexto e urgência
+const SYSTEM_PROMPT = `Seu nome é Lucy, você é um assistente especializado em interpretar solicitações de agendamento em português brasileiro.
 
-Regras importantes:
-1. A data de hoje é: {currentDate}
-2. Se o usuário mencionar "amanhã", calcule a data correta
-3. Se mencionar "próxima segunda/terça/etc", calcule a data correta
-4. Se mencionar "semana que vem", use a próxima segunda-feira
-5. Se não mencionar prioridade, use "medium"
-6. Se não mencionar hora, deixe scheduledTime como null
+IMPORTANTE: Você DEVE identificar TODAS as tarefas mencionadas pelo usuário e retorná-las em um array.
 
-Responda APENAS com um JSON válido, sem nenhum texto adicional ou markdown.
-Exemplo de resposta:
-{"title": "Reunião com equipe", 
-"description": null, 
-"scheduledDate": "2025-12-23", 
-"scheduledTime": "14:00", 
-"priority": "medium"}`;
+Para CADA tarefa identificada, determine a AÇÃO:
+- "create": criar/agendar nova tarefa (palavras: agendar, marcar, criar, lembrar, adicionar)
+- "update": modificar tarefa existente (palavras: alterar, mudar, atualizar, remarcar, adiar)
+- "delete": remover tarefa existente (palavras: deletar, remover, cancelar, excluir, apagar)
 
-function getNextDayOfWeek(dayOfWeek: number, currentDate: Date): Date {
-    const resultDate = new Date(currentDate);
-    const diff = dayOfWeek - currentDate.getDay();
-    resultDate.setDate(currentDate.getDate() + (diff > 0 ? diff : diff + 7));
-    return resultDate;
-}
+CAMPOS DE CADA TAREFA:
+- action: OBRIGATÓRIO - "create", "update" ou "delete"
+- taskIdentifier: para update/delete - identifica qual tarefa modificar
+- title: título da tarefa (máximo 50 caracteres) - obrigatório para create
+- description: descrição detalhada (opcional)
+- scheduledDate: data no formato YYYY-MM-DD
+- scheduledTime: hora no formato HH:MM
+- priority: "low", "medium" ou "high" (padrão: "medium")
+- status: "pending", "in_progress", "completed", "cancelled" (apenas para update)
+
+REGRAS DE DATA (hoje é {currentDate}):
+- "amanhã" = data de amanhã
+- "próxima segunda/terça/etc" = calcular a próxima ocorrência
+- "semana que vem" = próxima segunda-feira
+- Se não mencionar hora, scheduledTime = null
+
+REGRAS ESPECIAIS:
+- Se não especificar ação claramente, assuma "create"
+- "marcar como concluído/feito" = action: "update", status: "completed"
+- Para update/delete, taskIdentifier é obrigatório
+
+FORMATO DE RESPOSTA (JSON com array "tasks"):
+{"tasks": [
+  {"action": "create", "title": "Tarefa 1", "scheduledDate": "2025-12-23", "scheduledTime": "14:00", "priority": "medium"},
+  {"action": "create", "title": "Tarefa 2", "scheduledDate": "2025-12-26", "scheduledTime": "09:00", "priority": "medium"}
+]}
+
+Responda APENAS com JSON válido, sem texto adicional.`;
 
 function formatDate(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
-export async function parseScheduleRequest(
+export async function parseAgentRequest(
     apiKey: string,
     userMessage: string
-): Promise<{ success: true; data: GroqScheduleResponse; interpretation: string } | { success: false; error: string }> {
+): Promise<{ success: true; data: GroqAgentResponse; interpretations: string[] } | { success: false; error: string }> {
     const currentDate = new Date();
     const currentDateStr = formatDate(currentDate);
 
@@ -61,7 +67,7 @@ export async function parseScheduleRequest(
                     { role: "user", content: userMessage }
                 ],
                 temperature: 0.1,
-                max_tokens: 500,
+                max_tokens: 1000,
             }),
         });
 
@@ -83,7 +89,7 @@ export async function parseScheduleRequest(
             return { success: false, error: "Resposta vazia do modelo" };
         }
 
-        let parsed: GroqScheduleResponse;
+        let parsed: GroqAgentResponse;
         try {
             const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
             parsed = JSON.parse(cleanContent);
@@ -91,26 +97,52 @@ export async function parseScheduleRequest(
             return { success: false, error: `Falha ao interpretar resposta: ${content}` };
         }
 
-        if (!parsed.title) {
-            return { success: false, error: "Não foi possível extrair o título da tarefa" };
+        // Validate tasks array
+        if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+            return { success: false, error: "Nenhuma tarefa identificada na solicitação" };
         }
 
-        let interpretation = `Criei a tarefa "${parsed.title}"`;
-        if (parsed.scheduledDate) {
-            interpretation += ` para ${parsed.scheduledDate}`;
+        // Validate each task
+        for (const task of parsed.tasks) {
+            if (!task.action) {
+                return { success: false, error: "Ação não identificada em uma das tarefas" };
+            }
+
+            if (task.action === "create" && !task.title) {
+                return { success: false, error: "Título obrigatório para criar tarefa" };
+            }
+
+            if ((task.action === "update" || task.action === "delete") && !task.taskIdentifier) {
+                return { success: false, error: "Identificador obrigatório para atualizar/deletar tarefa" };
+            }
         }
-        if (parsed.scheduledTime) {
-            interpretation += ` às ${parsed.scheduledTime}`;
-        }
-        if (parsed.priority && parsed.priority !== "medium") {
-            const priorityText = parsed.priority === "high" ? "alta" : "baixa";
-            interpretation += ` com prioridade ${priorityText}`;
-        }
+
+        // Build interpretations for each task
+        const interpretations: string[] = parsed.tasks.map((task: GroqAgentTask) => {
+            let interpretation = "";
+            switch (task.action) {
+                case "create":
+                    interpretation = `Criei a tarefa "${task.title}"`;
+                    if (task.scheduledDate) interpretation += ` para ${task.scheduledDate}`;
+                    if (task.scheduledTime) interpretation += ` às ${task.scheduledTime}`;
+                    break;
+                case "update":
+                    interpretation = `Atualizei a tarefa "${task.taskIdentifier}"`;
+                    if (task.scheduledDate) interpretation += ` - nova data: ${task.scheduledDate}`;
+                    if (task.scheduledTime) interpretation += ` - novo horário: ${task.scheduledTime}`;
+                    if (task.status) interpretation += ` - status: ${task.status}`;
+                    break;
+                case "delete":
+                    interpretation = `Deletei a tarefa "${task.taskIdentifier}"`;
+                    break;
+            }
+            return interpretation;
+        });
 
         return {
             success: true,
             data: parsed,
-            interpretation,
+            interpretations,
         };
     } catch (error) {
         return { success: false, error: `Erro de conexão: ${String(error)}` };

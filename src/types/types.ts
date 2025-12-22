@@ -84,10 +84,18 @@ export type DeleteTask = {
 	userId: string
 }
 
-export type GroqScheduleResponse = {
-	title: string,
+export type GroqAgentTask = {
+	action: "create" | "update" | "delete",
+	taskIdentifier?: string,
+	title?: string,
 	description?: string,
 	scheduledDate?: string,
 	scheduledTime?: string,
-	priority?: "low" | "medium" | "high"
+	priority?: "low" | "medium" | "high",
+	status?: "pending" | "in_progress" | "completed" | "cancelled"
 }
+
+export type GroqAgentResponse = {
+	tasks: GroqAgentTask[]
+}
+
