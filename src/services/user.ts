@@ -68,6 +68,9 @@ export const updateUser = async (data: UpdateUser) => {
     if (data.email) updateData.email = data.email;
     if (data.role) updateData.role = data.role;
     if (data.password) updateData.password = await hashPassword(data.password);
+    if (data.profilePhoto !== undefined) updateData.profilePhoto = data.profilePhoto;
+    if (data.coverPhoto !== undefined) updateData.coverPhoto = data.coverPhoto;
+    if (data.bio !== undefined) updateData.bio = data.bio;
 
     if (Object.keys(updateData).length === 0) {
         return null;
@@ -82,6 +85,9 @@ export const updateUser = async (data: UpdateUser) => {
             name: schema.user.name,
             email: schema.user.email,
             role: schema.user.role,
+            profilePhoto: schema.user.profilePhoto,
+            coverPhoto: schema.user.coverPhoto,
+            bio: schema.user.bio,
         });
 
     return user;

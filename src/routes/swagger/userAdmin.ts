@@ -27,6 +27,9 @@ export class AdminGetUser extends OpenAPIRoute {
                                 name: Str(),
                                 email: Str(),
                                 role: Str(),
+                                profilePhoto: Str().nullable(),
+                                coverPhoto: Str().nullable(),
+                                bio: Str().nullable(),
                                 createdAt: Str(),
                             }),
                         }),
@@ -71,6 +74,9 @@ export class AdminGetUser extends OpenAPIRoute {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                profilePhoto: user.profilePhoto,
+                coverPhoto: user.coverPhoto,
+                bio: user.bio,
                 createdAt: user.createdAt,
             }
         };
@@ -96,6 +102,9 @@ export class AdminUpdateUser extends OpenAPIRoute {
                             email: Str({ required: false, example: "new@example.com" }),
                             password: Str({ required: false, example: "newPassword123" }),
                             role: z.enum(["free", "pro", "admin"]).optional(),
+                            profilePhoto: Str({ required: false, example: "https://example.com/photo.jpg" }),
+                            coverPhoto: Str({ required: false, example: "https://example.com/cover.jpg" }),
+                            bio: z.string().max(100, "Bio must be at most 100 characters").optional(),
                         }),
                     },
                 },
@@ -112,6 +121,9 @@ export class AdminUpdateUser extends OpenAPIRoute {
                                 name: Str(),
                                 email: Str(),
                                 role: Str(),
+                                profilePhoto: Str().nullable(),
+                                coverPhoto: Str().nullable(),
+                                bio: Str().nullable(),
                             }),
                         }),
                     },
@@ -151,6 +163,9 @@ export class AdminUpdateUser extends OpenAPIRoute {
             email: data.body.email,
             password: data.body.password,
             role: data.body.role,
+            profilePhoto: data.body.profilePhoto,
+            coverPhoto: data.body.coverPhoto,
+            bio: data.body.bio,
         });
 
         if (!user) {

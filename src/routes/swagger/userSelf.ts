@@ -22,6 +22,9 @@ export class UserGetSelf extends OpenAPIRoute {
                                 name: Str(),
                                 email: Str(),
                                 role: Str(),
+                                profilePhoto: Str().nullable(),
+                                coverPhoto: Str().nullable(),
+                                bio: Str().nullable(),
                                 createdAt: Str(),
                             }),
                         }),
@@ -63,6 +66,9 @@ export class UserGetSelf extends OpenAPIRoute {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                profilePhoto: user.profilePhoto,
+                coverPhoto: user.coverPhoto,
+                bio: user.bio,
                 createdAt: user.createdAt,
             }
         };
@@ -84,6 +90,9 @@ export class UserUpdateSelf extends OpenAPIRoute {
                             name: Str({ required: false, example: "New Name" }),
                             email: Str({ required: false, example: "new@example.com" }),
                             password: Str({ required: false, example: "newPassword123" }),
+                            profilePhoto: Str({ required: false, example: "https://example.com/photo.jpg" }),
+                            coverPhoto: Str({ required: false, example: "https://example.com/cover.jpg" }),
+                            bio: z.string().max(100, "Bio must be at most 100 characters").optional(),
                         }),
                     },
                 },
@@ -100,6 +109,9 @@ export class UserUpdateSelf extends OpenAPIRoute {
                                 name: Str(),
                                 email: Str(),
                                 role: Str(),
+                                profilePhoto: Str().nullable(),
+                                coverPhoto: Str().nullable(),
+                                bio: Str().nullable(),
                             }),
                         }),
                     },
@@ -136,6 +148,9 @@ export class UserUpdateSelf extends OpenAPIRoute {
             name: data.body.name,
             email: data.body.email,
             password: data.body.password,
+            profilePhoto: data.body.profilePhoto,
+            coverPhoto: data.body.coverPhoto,
+            bio: data.body.bio,
         });
 
         if (!user) {

@@ -44,10 +44,50 @@ export type UpdateUser = {
 	name?: string,
 	email?: string,
 	password?: string,
-	role?: "free" | "pro" | "admin"
+	role?: "free" | "pro" | "admin",
+	profilePhoto?: string,
+	coverPhoto?: string,
+	bio?: string
 }
 
 export type DeleteUser = {
 	db: D1Database,
 	userId: string
+}
+
+export type CreateTask = {
+	db: D1Database,
+	userId: string,
+	title: string,
+	description?: string,
+	scheduledDate?: string,
+	scheduledTime?: string,
+	priority?: "low" | "medium" | "high",
+	createdByAgent?: boolean
+}
+
+export type UpdateTaskData = {
+	db: D1Database,
+	taskId: string,
+	userId: string,
+	title?: string,
+	description?: string,
+	scheduledDate?: string,
+	scheduledTime?: string,
+	priority?: "low" | "medium" | "high",
+	status?: "pending" | "in_progress" | "completed" | "cancelled"
+}
+
+export type DeleteTask = {
+	db: D1Database,
+	taskId: string,
+	userId: string
+}
+
+export type GroqScheduleResponse = {
+	title: string,
+	description?: string,
+	scheduledDate?: string,
+	scheduledTime?: string,
+	priority?: "low" | "medium" | "high"
 }
