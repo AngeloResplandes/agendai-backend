@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1766375695082,
-      "tag": "0000_magical_colonel_america",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1766415216999,
-      "tag": "0001_striped_impossible_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1766416832556,
-      "tag": "0002_fuzzy_magus",
+      "when": 1766418389619,
+      "tag": "0000_opposite_firebrand",
       "breakpoints": true
     }
   ]

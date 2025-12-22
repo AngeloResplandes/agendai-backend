@@ -14,7 +14,7 @@
 		{
 			"binding": "DB",
 			"database_name": "agendai-db",
-			"database_id": "99cf86a9-38c9-499f-a6a4-66df863ce3fd",
+			"database_id": "32ac4299-4495-4aa9-994d-11801cbebdf3",
 			"migrations_dir": "drizzle/migrations"
 		}
 	],
