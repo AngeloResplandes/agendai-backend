@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { createPasswordResetToken } from "../../services/passwordReset";
 import { sendPasswordResetEmail } from "../../services/email";
+import { NotFoundResponse } from "../../schemas";
 
 export class ForgotPassword extends OpenAPIRoute {
     schema = {
@@ -32,23 +33,12 @@ export class ForgotPassword extends OpenAPIRoute {
                     },
                 },
             },
-            "404": {
-                description: "Email not found",
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            error: Str(),
-                        }),
-                    },
-                },
-            },
+            ...NotFoundResponse,
             "500": {
                 description: "Failed to send email",
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            error: Str(),
-                        }),
+                        schema: z.object({ error: Str() }),
                     },
                 },
             },
@@ -83,4 +73,3 @@ export class ForgotPassword extends OpenAPIRoute {
         };
     }
 }
-

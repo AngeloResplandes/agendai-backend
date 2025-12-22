@@ -2,6 +2,7 @@ import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { resetPassword } from "../../services/passwordReset";
+import { BadRequestResponse } from "../../schemas";
 
 export class ResetPassword extends OpenAPIRoute {
     schema = {
@@ -26,22 +27,11 @@ export class ResetPassword extends OpenAPIRoute {
                 description: "Password reset successfully",
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            message: Str(),
-                        }),
+                        schema: z.object({ message: Str() }),
                     },
                 },
             },
-            "400": {
-                description: "Token is invalid or expired",
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            error: Str(),
-                        }),
-                    },
-                },
-            },
+            ...BadRequestResponse,
         },
     };
 

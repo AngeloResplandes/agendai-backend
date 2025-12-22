@@ -1,10 +1,11 @@
-import { OpenAPIRoute, Str } from "chanfana";
+import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { login } from "../../services/user";
 import { createJWT } from "../../lib/jwt";
+import { LoginSchema, TokenResponseSchema, UnauthorizedResponse } from "../../schemas";
 
-export class AuthSignIn extends OpenAPIRoute {
+export class SignIn extends OpenAPIRoute {
     schema = {
         tags: ["Auth"],
         summary: "User login",
@@ -12,10 +13,7 @@ export class AuthSignIn extends OpenAPIRoute {
             body: {
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            email: Str({ example: "user@example.com" }),
-                            password: Str({ example: "password123" }),
-                        }),
+                        schema: LoginSchema,
                     },
                 },
             },
@@ -25,28 +23,11 @@ export class AuthSignIn extends OpenAPIRoute {
                 description: "Login successful",
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            token: Str(),
-                            user: z.object({
-                                id: Str(),
-                                name: Str(),
-                                email: Str(),
-                                role: Str({ example: "free" }),
-                            }),
-                        }),
+                        schema: TokenResponseSchema,
                     },
                 },
             },
-            "401": {
-                description: "Invalid credentials",
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            error: Str(),
-                        }),
-                    },
-                },
-            },
+            ...UnauthorizedResponse,
         },
     };
 

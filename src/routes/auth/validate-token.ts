@@ -2,6 +2,7 @@ import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { validatePasswordResetToken } from "../../services/passwordReset";
+import { BadRequestResponse } from "../../schemas";
 
 export class ValidateToken extends OpenAPIRoute {
     schema = {
@@ -25,22 +26,11 @@ export class ValidateToken extends OpenAPIRoute {
                 description: "Token is valid",
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            valid: z.boolean(),
-                        }),
+                        schema: z.object({ valid: z.boolean() }),
                     },
                 },
             },
-            "400": {
-                description: "Token is invalid or expired",
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            error: Str(),
-                        }),
-                    },
-                },
-            },
+            ...BadRequestResponse,
         },
     };
 

@@ -2,8 +2,27 @@ import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { updateUser, deleteUser, findUserById } from "../../services/user";
-import { verify } from "hono/jwt";
-import type { JWTPayload } from "../../types/types";
+import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
+import { UserSchema, UnauthorizedResponse, NotFoundResponse } from "../../schemas";
+
+// Helper para verificar admin
+async function requireAdmin(c: AppContext) {
+    const auth = await requireAuth(c);
+    if (!auth) return { error: "auth" as const };
+
+    const adminUser = await findUserById(c.env.DB, auth.userId);
+    if (!adminUser || adminUser.role !== "admin") {
+        return { error: "forbidden" as const };
+    }
+    return { userId: auth.userId };
+}
+
+const ForbiddenResponse = {
+    "403": {
+        description: "Forbidden",
+        content: { "application/json": { schema: z.object({ error: Str() }) } },
+    },
+};
 
 export class AdminGetUser extends OpenAPIRoute {
     schema = {
@@ -21,49 +40,24 @@ export class AdminGetUser extends OpenAPIRoute {
                 description: "User profile",
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            user: z.object({
-                                id: Str(),
-                                name: Str(),
-                                email: Str(),
-                                role: Str(),
-                                profilePhoto: Str().nullable(),
-                                coverPhoto: Str().nullable(),
-                                bio: Str().nullable(),
-                                createdAt: Str(),
-                            }),
-                        }),
+                        schema: z.object({ user: UserSchema }),
                     },
                 },
             },
-            "401": { description: "Unauthorized", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "403": { description: "Forbidden", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "404": { description: "User not found", content: { "application/json": { schema: z.object({ error: Str() }) } } },
+            ...UnauthorizedResponse,
+            ...ForbiddenResponse,
+            ...NotFoundResponse,
         },
     };
 
     async handle(c: AppContext) {
-        const authHeader = c.req.header("authorization");
-        if (!authHeader) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
-
-        const adminUser = await findUserById(c.env.DB, decoded.id);
-        if (!adminUser || adminUser.role !== "admin") {
-            return c.json({ error: "Permissão insuficiente" }, 403);
-        }
+        const admin = await requireAdmin(c);
+        if (admin.error === "auth") return unauthorizedResponse(c);
+        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
 
         const data = await this.getValidatedData<typeof this.schema>();
-        const { userId } = data.params;
+        const user = await findUserById(c.env.DB, data.params.userId);
 
-        const user = await findUserById(c.env.DB, userId);
         if (!user) {
             return c.json({ error: "Usuário não encontrado" }, 404);
         }
@@ -83,7 +77,6 @@ export class AdminGetUser extends OpenAPIRoute {
     }
 }
 
-
 export class AdminUpdateUser extends OpenAPIRoute {
     schema = {
         tags: ["Admin"],
@@ -102,9 +95,9 @@ export class AdminUpdateUser extends OpenAPIRoute {
                             email: Str({ required: false, example: "new@example.com" }),
                             password: Str({ required: false, example: "newPassword123" }),
                             role: z.enum(["free", "pro", "admin"]).optional(),
-                            profilePhoto: Str({ required: false, example: "https://example.com/photo.jpg" }),
-                            coverPhoto: Str({ required: false, example: "https://example.com/cover.jpg" }),
-                            bio: z.string().max(100, "Bio must be at most 100 characters").optional(),
+                            profilePhoto: Str({ required: false }),
+                            coverPhoto: Str({ required: false }),
+                            bio: z.string().max(100).optional(),
                         }),
                     },
                 },
@@ -129,36 +122,22 @@ export class AdminUpdateUser extends OpenAPIRoute {
                     },
                 },
             },
-            "401": { description: "Unauthorized", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "403": { description: "Forbidden", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "404": { description: "User not found", content: { "application/json": { schema: z.object({ error: Str() }) } } },
+            ...UnauthorizedResponse,
+            ...ForbiddenResponse,
+            ...NotFoundResponse,
         },
     };
 
     async handle(c: AppContext) {
-        const authHeader = c.req.header("authorization");
-        if (!authHeader) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
-
-        const adminUser = await findUserById(c.env.DB, decoded.id);
-        if (!adminUser || adminUser.role !== "admin") {
-            return c.json({ error: "Permissão insuficiente" }, 403);
-        }
+        const admin = await requireAdmin(c);
+        if (admin.error === "auth") return unauthorizedResponse(c);
+        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
 
         const data = await this.getValidatedData<typeof this.schema>();
-        const { userId } = data.params;
 
         const user = await updateUser({
             db: c.env.DB,
-            userId,
+            userId: data.params.userId,
             name: data.body.name,
             email: data.body.email,
             password: data.body.password,
@@ -169,7 +148,7 @@ export class AdminUpdateUser extends OpenAPIRoute {
         });
 
         if (!user) {
-            return c.json({ error: "Usuário não encontrado ou nenhum dado para atualizar" }, 404);
+            return c.json({ error: "Usuário não encontrado" }, 404);
         }
 
         return { user };
@@ -196,34 +175,19 @@ export class AdminDeleteUser extends OpenAPIRoute {
                     },
                 },
             },
-            "401": { description: "Unauthorized", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "403": { description: "Forbidden", content: { "application/json": { schema: z.object({ error: Str() }) } } },
-            "404": { description: "User not found", content: { "application/json": { schema: z.object({ error: Str() }) } } },
+            ...UnauthorizedResponse,
+            ...ForbiddenResponse,
+            ...NotFoundResponse,
         },
     };
 
     async handle(c: AppContext) {
-        const authHeader = c.req.header("authorization");
-        if (!authHeader) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
-
-        const adminUser = await findUserById(c.env.DB, decoded.id);
-        if (!adminUser || adminUser.role !== "admin") {
-            return c.json({ error: "Permissão insuficiente" }, 403);
-        }
+        const admin = await requireAdmin(c);
+        if (admin.error === "auth") return unauthorizedResponse(c);
+        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
 
         const data = await this.getValidatedData<typeof this.schema>();
-        const { userId } = data.params;
-
-        const deleted = await deleteUser({ db: c.env.DB, userId });
+        const deleted = await deleteUser({ db: c.env.DB, userId: data.params.userId });
 
         if (!deleted) {
             return c.json({ error: "Usuário não encontrado" }, 404);

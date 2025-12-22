@@ -2,7 +2,7 @@ import { fromHono } from "chanfana";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
-import { registerRoutes } from "./routes/main";
+import { registerRoutes } from "./routes";
 
 const app = new Hono<{ Bindings: Env }>();
 

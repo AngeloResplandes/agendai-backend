@@ -1,20 +1,23 @@
 import type { Hono } from "hono";
-import { AuthSignIn } from "./swagger/authSignIn";
-import { AuthSignUp } from "./swagger/authSignUp";
-import { ForgotPassword } from "./swagger/forgotPassword";
-import { ValidateToken } from "./swagger/validateToken";
-import { ResetPassword } from "./swagger/resetPassword";
-import { UserGetSelf, UserUpdateSelf, UserDeleteSelf } from "./swagger/userSelf";
-import { AdminGetUser, AdminUpdateUser, AdminDeleteUser } from "./swagger/userAdmin";
-import { TaskCreate, TaskList, TaskGet, TaskUpdate, TaskDelete } from "./swagger/taskRoutes";
-import { AgentSchedule } from "./swagger/agentRoutes";
+
+// Auth routes
+import { SignIn, SignUp, ForgotPassword, ValidateToken, ResetPassword } from "./auth";
+
+// User routes
+import { GetSelf, UpdateSelf, DeleteSelf, AdminGetUser, AdminUpdateUser, AdminDeleteUser } from "./user";
+
+// Task routes
+import { Create as TaskCreate, List as TaskList, Get as TaskGet, Update as TaskUpdate, Delete as TaskDelete } from "./tasks";
+
+// Agent routes
+import { Schedule as AgentSchedule } from "./agent";
 
 type OpenAPI = ReturnType<typeof import("chanfana").fromHono<Hono<{ Bindings: Env }>>>;
 
 export function registerRoutes(openapi: OpenAPI) {
     // Auth routes
-    openapi.post("/api/auth/signin", AuthSignIn);
-    openapi.post("/api/auth/signup", AuthSignUp);
+    openapi.post("/api/auth/signin", SignIn);
+    openapi.post("/api/auth/signup", SignUp);
     openapi.post("/api/auth/forgot-password", ForgotPassword);
     openapi.post("/api/auth/validate-token", ValidateToken);
     openapi.post("/api/auth/reset-password", ResetPassword);
@@ -25,9 +28,9 @@ export function registerRoutes(openapi: OpenAPI) {
     openapi.delete("/api/admin/users/:userId", AdminDeleteUser);
 
     // User self-management
-    openapi.get("/api/user/me", UserGetSelf);
-    openapi.put("/api/user/me", UserUpdateSelf);
-    openapi.delete("/api/user/me", UserDeleteSelf);
+    openapi.get("/api/user/me", GetSelf);
+    openapi.put("/api/user/me", UpdateSelf);
+    openapi.delete("/api/user/me", DeleteSelf);
 
     // Task routes
     openapi.post("/api/tasks", TaskCreate);

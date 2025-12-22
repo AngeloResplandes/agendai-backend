@@ -1,11 +1,12 @@
 import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
-import type { AppContext, JWTPayload } from "../../types/types";
+import type { AppContext } from "../../types/types";
 import { parseScheduleRequest } from "../../services/groq";
 import { createTask } from "../../services/task";
-import { verify } from "hono/jwt";
+import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
+import { TaskSchema, UnauthorizedResponse, BadRequestResponse } from "../../schemas";
 
-export class AgentSchedule extends OpenAPIRoute {
+export class Schedule extends OpenAPIRoute {
     schema = {
         tags: ["Agent"],
         summary: "Schedule task via AI agent",
@@ -29,72 +30,31 @@ export class AgentSchedule extends OpenAPIRoute {
                     "application/json": {
                         schema: z.object({
                             success: z.boolean(),
-                            task: z.object({
-                                id: Str(),
-                                title: Str(),
-                                description: Str().nullable(),
-                                scheduledDate: Str().nullable(),
-                                scheduledTime: Str().nullable(),
-                                priority: Str(),
-                                status: Str(),
-                                createdByAgent: z.boolean(),
-                                createdAt: Str(),
-                            }),
+                            task: TaskSchema,
                             interpretation: Str(),
                         }),
                     },
                 },
             },
-            "400": {
-                description: "Failed to interpret request",
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            success: z.boolean(),
-                            error: Str(),
-                        }),
-                    },
-                },
-            },
-            "401": {
-                description: "Unauthorized",
-                content: {
-                    "application/json": {
-                        schema: z.object({ error: Str() }),
-                    },
-                },
-            },
+            ...BadRequestResponse,
+            ...UnauthorizedResponse,
         },
     };
 
     async handle(c: AppContext) {
-        const authHeader = c.req.header("authorization");
-        if (!authHeader) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            return c.json({ error: "Acesso negado" }, 401);
-        }
-
-        let userId: string;
-        try {
-            const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
-            userId = decoded.id;
-        } catch {
-            return c.json({ error: "Token inválido" }, 401);
-        }
+        const auth = await requireAuth(c);
+        if (!auth) return unauthorizedResponse(c);
 
         const data = await this.getValidatedData<typeof this.schema>();
         const userMessage = data.body.message;
 
-        // Parse the natural language request using Groq
+        // Get Groq API key
         const groqApiKey = (c.env as unknown as { GROQ_API_KEY?: string }).GROQ_API_KEY;
         if (!groqApiKey) {
             return c.json({ success: false, error: "GROQ_API_KEY não configurada" }, 500);
         }
 
+        // Parse the natural language request using Groq
         const result = await parseScheduleRequest(groqApiKey, userMessage);
 
         if (result.success === false) {
@@ -104,7 +64,7 @@ export class AgentSchedule extends OpenAPIRoute {
         // Create the task with the parsed data
         const task = await createTask({
             db: c.env.DB,
-            userId,
+            userId: auth.userId,
             title: result.data.title,
             description: result.data.description,
             scheduledDate: result.data.scheduledDate,
