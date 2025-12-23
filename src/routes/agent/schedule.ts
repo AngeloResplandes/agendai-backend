@@ -70,6 +70,16 @@ export class Schedule extends OpenAPIRoute {
             }, 400);
         }
 
+        if ('isConversation' in result.data && result.data.isConversation === true) {
+            return c.json({
+                success: true,
+                isConversation: true,
+                message: result.data.message,
+            }, 200);
+        }
+
+        const taskData = result.data;
+
         const results: Array<{
             action: string;
             success: boolean;
@@ -79,23 +89,23 @@ export class Schedule extends OpenAPIRoute {
 
         const interpretations: string[] = [];
 
-        for (let i = 0; i < result.data.tasks.length; i++) {
-            const taskData = result.data.tasks[i];
+        for (let i = 0; i < taskData.tasks.length; i++) {
+            const task = taskData.tasks[i];
 
             try {
-                const taskResult = await this.processTask(c, auth.userId, taskData);
-                const interpretation = generateHumanizedInterpretation(taskData, auth.userName, true);
+                const taskResult = await this.processTask(c, auth.userId, task);
+                const interpretation = generateHumanizedInterpretation(task, auth.userName, true);
                 interpretations.push(interpretation);
                 results.push({
-                    action: taskData.action,
+                    action: task.action,
                     success: true,
                     task: taskResult,
                 });
             } catch (error) {
-                const interpretation = generateHumanizedInterpretation(taskData, auth.userName, false);
+                const interpretation = generateHumanizedInterpretation(task, auth.userName, false);
                 interpretations.push(interpretation);
                 results.push({
-                    action: taskData.action,
+                    action: task.action,
                     success: false,
                     error: error instanceof Error ? error.message : String(error),
                 });

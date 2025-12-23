@@ -433,7 +433,7 @@ async function testAgentRoutes(ctx: TestContext): Promise<TestResult[]> {
         return [{ route: "/api/agent/*", method: "ALL", status: "skip", message: "Sem token de autenticação" }];
     }
 
-    // POST /api/agent/schedule
+    // POST /api/agent/schedule - Criar tarefa
     {
         const res = await request("POST", "/api/agent/schedule", {
             message: "Criar uma tarefa de teste para amanhã às 10h",
@@ -446,6 +446,24 @@ async function testAgentRoutes(ctx: TestContext): Promise<TestResult[]> {
             status: res.ok ? "pass" : res.status === 500 ? "pass" : "fail",
             statusCode: res.status,
             message: res.status === 500 ? "GROQ não configurado (esperado em dev)" : res.ok ? undefined : (res.data as any).error,
+            responseTime: res.time,
+        });
+    }
+
+    // POST /api/agent/schedule - Conversa casual (não salva no banco)
+    {
+        const res = await request("POST", "/api/agent/schedule", {
+            message: "Quem é você?",
+        }, ctx.token);
+
+        const isConversation = (res.data as any).isConversation === true;
+
+        results.push({
+            route: "/api/agent/schedule (conversa)",
+            method: "POST",
+            status: res.ok && isConversation ? "pass" : res.status === 500 ? "pass" : "fail",
+            statusCode: res.status,
+            message: res.status === 500 ? "GROQ não configurado (esperado em dev)" : isConversation ? "Conversa casual detectada ✓" : (res.data as any).error,
             responseTime: res.time,
         });
     }

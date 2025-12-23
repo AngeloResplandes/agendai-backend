@@ -99,3 +99,15 @@ export type GroqAgentResponse = {
 	tasks: GroqAgentTask[]
 }
 
+export type GroqConversationResponse = {
+	isConversation: true;
+	message: string;
+}
+
+export type GroqTasksResponse = {
+	isConversation: false;
+	tasks: GroqAgentTask[];
+}
+
+export type GroqFullResponse = GroqConversationResponse | GroqTasksResponse;
+

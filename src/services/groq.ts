@@ -1,10 +1,32 @@
-import type { GroqAgentResponse, GroqAgentTask } from "../types/types";
+import type { GroqAgentResponse, GroqAgentTask, GroqFullResponse } from "../types/types";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `Seu nome é Lucy, você é um assistente especializado em interpretar solicitações de agendamento em português brasileiro.
+const SYSTEM_PROMPT = `Seu nome é Lucy, você é uma assistente virtual simpática 
+e amigável, especializada em ajudar com agendamento de tarefas.
 
-IMPORTANTE: Você DEVE identificar TODAS as tarefas mencionadas pelo usuário e retorná-las em um array.
+TIPOS DE INTERAÇÃO:
+
+1. CONVERSAÇÃO CASUAL - Quando o usuário:
+   - Perguntar quem você é, seu nome, o que você faz
+   - Fizer saudações (oi, olá, bom dia, etc)
+   - Perguntar como você está
+   - Fizer perguntas gerais não relacionadas a tarefas
+   - Agradecer ou se despedir
+   
+   RESPONDA COM JSON:
+   {"isConversation": true, "message": "Sua resposta amigável aqui"}
+   
+   Seja simpática, use emojis, e lembre que você é a Lucy, assistente de agendamentos do AgendAI.
+
+2. AGENDAMENTO DE TAREFAS - Quando o usuário mencionar:
+   - Criar, agendar, marcar, lembrar, adicionar tarefas
+   - Alterar, mudar, atualizar, remarcar tarefas
+   - Deletar, remover, cancelar tarefas
+   - Datas, horários, compromissos
+
+   RESPONDA COM JSON:
+   {"isConversation": false, "tasks": [...]}
 
 Para CADA tarefa identificada, determine a AÇÃO:
 - "create": criar/agendar nova tarefa (palavras: agendar, marcar, criar, lembrar, adicionar)
@@ -32,12 +54,6 @@ REGRAS ESPECIAIS:
 - "marcar como concluído/feito" = action: "update", status: "completed"
 - Para update/delete, taskIdentifier é obrigatório
 
-FORMATO DE RESPOSTA (JSON com array "tasks"):
-{"tasks": [
-  {"action": "create", "title": "Tarefa 1", "scheduledDate": "2025-12-23", "scheduledTime": "14:00", "priority": "medium"},
-  {"action": "create", "title": "Tarefa 2", "scheduledDate": "2025-12-26", "scheduledTime": "09:00", "priority": "medium"}
-]}
-
 Responda APENAS com JSON válido, sem texto adicional.`;
 
 function formatDate(date: Date): string {
@@ -47,7 +63,7 @@ function formatDate(date: Date): string {
 export async function parseAgentRequest(
     apiKey: string,
     userMessage: string
-): Promise<{ success: true; data: GroqAgentResponse; interpretations: string[] } | { success: false; error: string }> {
+): Promise<{ success: true; data: GroqFullResponse; interpretations: string[] } | { success: false; error: string }> {
     const currentDate = new Date();
     const currentDateStr = formatDate(currentDate);
 
@@ -66,7 +82,7 @@ export async function parseAgentRequest(
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userMessage }
                 ],
-                temperature: 0.1,
+                temperature: 0.3,
                 max_tokens: 1000,
             }),
         });
@@ -89,7 +105,7 @@ export async function parseAgentRequest(
             return { success: false, error: "Resposta vazia do modelo" };
         }
 
-        let parsed: GroqAgentResponse;
+        let parsed: GroqFullResponse;
         try {
             const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
             parsed = JSON.parse(cleanContent);
@@ -97,10 +113,22 @@ export async function parseAgentRequest(
             return { success: false, error: `Falha ao interpretar resposta: ${content}` };
         }
 
-        if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+        // Verifica se é uma conversa casual
+        if ('isConversation' in parsed && parsed.isConversation === true) {
+            return {
+                success: true,
+                data: parsed,
+                interpretations: [],
+            };
+        }
+
+        // É uma resposta de tarefas
+        const taskResponse = parsed as { isConversation: false; tasks: GroqAgentTask[] };
+
+        if (!taskResponse.tasks || !Array.isArray(taskResponse.tasks) || taskResponse.tasks.length === 0) {
             return { success: false, error: "Nenhuma tarefa identificada na solicitação" };
         }
-        for (const task of parsed.tasks) {
+        for (const task of taskResponse.tasks) {
             if (!task.action) {
                 return { success: false, error: "Ação não identificada em uma das tarefas" };
             }
@@ -114,7 +142,7 @@ export async function parseAgentRequest(
             }
         }
 
-        const interpretations: string[] = parsed.tasks.map((task: GroqAgentTask) => {
+        const interpretations: string[] = taskResponse.tasks.map((task: GroqAgentTask) => {
             let interpretation = "";
             switch (task.action) {
                 case "create":
@@ -137,7 +165,7 @@ export async function parseAgentRequest(
 
         return {
             success: true,
-            data: parsed,
+            data: taskResponse,
             interpretations,
         };
     } catch (error) {
@@ -145,9 +173,6 @@ export async function parseAgentRequest(
     }
 }
 
-/**
- * Gera uma mensagem humanizada para o usuário
- */
 export function generateHumanizedInterpretation(
     task: GroqAgentTask,
     userName: string,
@@ -204,9 +229,7 @@ export function generateHumanizedInterpretation(
     }
 }
 
-/**
- * Formata data para formato humano em português
- */
+
 function formatDateHuman(dateStr: string): string {
     const date = new Date(dateStr + "T12:00:00");
     const today = new Date();
