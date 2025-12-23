@@ -5,7 +5,6 @@ import { updateUser, deleteUser, findUserById } from "../../services/user";
 import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
 import { UserSchema, UnauthorizedResponse, NotFoundResponse } from "../../schemas";
 
-// Helper para verificar admin
 async function requireAdmin(c: AppContext) {
     const auth = await requireAuth(c);
     if (!auth) return { error: "auth" as const };

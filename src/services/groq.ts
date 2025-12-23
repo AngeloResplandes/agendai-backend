@@ -97,12 +97,9 @@ export async function parseAgentRequest(
             return { success: false, error: `Falha ao interpretar resposta: ${content}` };
         }
 
-        // Validate tasks array
         if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
             return { success: false, error: "Nenhuma tarefa identificada na solicitação" };
         }
-
-        // Validate each task
         for (const task of parsed.tasks) {
             if (!task.action) {
                 return { success: false, error: "Ação não identificada em uma das tarefas" };
@@ -117,7 +114,6 @@ export async function parseAgentRequest(
             }
         }
 
-        // Build interpretations for each task (will be replaced with humanized version in route)
         const interpretations: string[] = parsed.tasks.map((task: GroqAgentTask) => {
             let interpretation = "";
             switch (task.action) {

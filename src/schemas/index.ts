@@ -1,10 +1,6 @@
 import { Str } from "chanfana";
 import { z } from "zod";
 
-// ============================================
-// Common Error Schemas
-// ============================================
-
 export const ErrorSchema = z.object({ error: Str() });
 
 export const UnauthorizedResponse = {
@@ -40,10 +36,6 @@ export const BadRequestResponse = {
     },
 };
 
-// ============================================
-// Task Schemas
-// ============================================
-
 export const TaskSchema = z.object({
     id: Str(),
     title: Str(),
@@ -77,10 +69,6 @@ export const TaskUpdateSchema = z.object({
     status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional(),
 });
 
-// ============================================
-// User Schemas
-// ============================================
-
 export const UserSchema = z.object({
     id: Str(),
     name: Str(),
@@ -100,10 +88,6 @@ export const UserUpdateSchema = z.object({
     coverPhoto: Str({ required: false, example: "https://example.com/cover.jpg" }),
     bio: z.string().max(100, "Bio must be at most 100 characters").optional(),
 });
-
-// ============================================
-// Auth Schemas
-// ============================================
 
 export const LoginSchema = z.object({
     email: Str({ example: "user@example.com" }),

@@ -79,7 +79,6 @@ export class Schedule extends OpenAPIRoute {
 
         const interpretations: string[] = [];
 
-        // Process each task
         for (let i = 0; i < result.data.tasks.length; i++) {
             const taskData = result.data.tasks[i];
 
@@ -107,7 +106,6 @@ export class Schedule extends OpenAPIRoute {
         const totalCount = results.length;
         const firstName = auth.userName.split(" ")[0];
 
-        // Gerar mensagem final humanizada
         let message: string;
         if (successCount === totalCount) {
             if (totalCount === 1) {
