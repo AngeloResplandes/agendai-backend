@@ -38,12 +38,47 @@ export const findTaskByTitle = async (db: D1Database, userId: string, searchTitl
         orderBy: (task, { desc }) => [desc(task.createdAt)],
     });
 
-    // Search for task with title containing the search term (case insensitive)
-    const searchLower = searchTitle.toLowerCase();
-    return tasks.find(task =>
-        task.title.toLowerCase().includes(searchLower) ||
-        (task.description && task.description.toLowerCase().includes(searchLower))
-    );
+    if (tasks.length === 0) return undefined;
+
+    const searchLower = searchTitle.toLowerCase().trim();
+    const searchWords = searchLower.split(/\s+/).filter(w => w.length > 2);
+
+    // Calcula score de similaridade para cada tarefa
+    const scored = tasks.map(task => {
+        const titleLower = task.title.toLowerCase();
+        const descLower = (task.description || '').toLowerCase();
+        let score = 0;
+
+        // Match exato no título (maior prioridade)
+        if (titleLower === searchLower) score += 100;
+
+        // Título contém a busca completa
+        if (titleLower.includes(searchLower)) score += 50;
+
+        // Busca contém o título
+        if (searchLower.includes(titleLower)) score += 40;
+
+        // Match de palavras individuais
+        for (const word of searchWords) {
+            if (titleLower.includes(word)) score += 15;
+            if (descLower.includes(word)) score += 5;
+        }
+
+        // Primeiras palavras coincidem (ex: "reunião" encontra "reunião com equipe")
+        const titleFirstWord = titleLower.split(/\s+/)[0];
+        const searchFirstWord = searchWords[0];
+        if (titleFirstWord && searchFirstWord && titleFirstWord.includes(searchFirstWord)) {
+            score += 20;
+        }
+
+        return { task, score };
+    });
+
+    // Ordena por score e retorna o melhor match (se tiver score mínimo)
+    scored.sort((a, b) => b.score - a.score);
+
+    // Retorna apenas se tiver alguma similaridade
+    return scored[0]?.score >= 10 ? scored[0].task : undefined;
 };
 
 export const getTaskById = async (db: D1Database, taskId: string, userId: string) => {

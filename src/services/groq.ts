@@ -1,9 +1,8 @@
-import type { GroqAgentResponse, GroqAgentTask, GroqFullResponse } from "../types/types";
+import type { GroqAgentTask, GroqFullResponse } from "../types/types";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `Seu nome é Lucy, você é uma assistente virtual simpática 
-e amigável, especializada em ajudar com agendamento de tarefas.
+const SYSTEM_PROMPT = `Seu nome é Lucy, você é uma assistente virtual simpática e amigável, especializada em ajudar com agendamento de tarefas.
 
 TIPOS DE INTERAÇÃO:
 
@@ -35,7 +34,7 @@ Para CADA tarefa identificada, determine a AÇÃO:
 
 CAMPOS DE CADA TAREFA:
 - action: OBRIGATÓRIO - "create", "update" ou "delete"
-- taskIdentifier: para update/delete - identifica qual tarefa modificar
+- taskIdentifier: para update/delete - use palavras-chave que identifiquem a tarefa (não precisa do nome exato, use termos como "reunião", "dentista", "médico", etc.)
 - title: título da tarefa (máximo 50 caracteres) - obrigatório para create
 - description: descrição detalhada (opcional)
 - scheduledDate: data no formato YYYY-MM-DD
@@ -52,7 +51,7 @@ REGRAS DE DATA (hoje é {currentDate}):
 REGRAS ESPECIAIS:
 - Se não especificar ação claramente, assuma "create"
 - "marcar como concluído/feito" = action: "update", status: "completed"
-- Para update/delete, taskIdentifier é obrigatório
+- Para update/delete, extraia a palavra-chave principal da tarefa mencionada
 
 Responda APENAS com JSON válido, sem texto adicional.`;
 
@@ -113,7 +112,6 @@ export async function parseAgentRequest(
             return { success: false, error: `Falha ao interpretar resposta: ${content}` };
         }
 
-        // Verifica se é uma conversa casual
         if ('isConversation' in parsed && parsed.isConversation === true) {
             return {
                 success: true,
@@ -122,7 +120,6 @@ export async function parseAgentRequest(
             };
         }
 
-        // É uma resposta de tarefas
         const taskResponse = parsed as { isConversation: false; tasks: GroqAgentTask[] };
 
         if (!taskResponse.tasks || !Array.isArray(taskResponse.tasks) || taskResponse.tasks.length === 0) {
