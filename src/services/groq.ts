@@ -18,11 +18,23 @@ TIPOS DE INTERAÇÃO:
    
    Seja simpática, use emojis, e lembre que você é a Lucy, assistente de agendamentos do AgendAI.
 
-2. AGENDAMENTO DE TAREFAS - Quando o usuário mencionar:
+2. CONSULTA DE DISPONIBILIDADE - Quando o usuário perguntar:
+   - "Quais dias estou livre/disponível?"
+   - "Quando tenho compromisso?"
+   - "Estou ocupado amanhã?"
+   - "O que tenho agendado para esta semana?"
+   - "Minha agenda", "Meus compromissos"
+   
+   ANALISE AS TAREFAS EXISTENTES (fornecidas abaixo) e responda com:
+   {"isConversation": true, "message": "Resposta sobre disponibilidade baseada nas tarefas"}
+   
+   Liste os dias com compromissos e os dias livres de forma amigável.
+
+3. AGENDAMENTO DE TAREFAS - Quando o usuário mencionar:
    - Criar, agendar, marcar, lembrar, adicionar tarefas
    - Alterar, mudar, atualizar, remarcar tarefas
    - Deletar, remover, cancelar tarefas
-   - Datas, horários, compromissos
+   - Datas, horários, novos compromissos
 
    RESPONDA COM JSON:
    {"isConversation": false, "tasks": [...]}
@@ -34,7 +46,7 @@ Para CADA tarefa identificada, determine a AÇÃO:
 
 CAMPOS DE CADA TAREFA:
 - action: OBRIGATÓRIO - "create", "update" ou "delete"
-- taskIdentifier: para update/delete - use palavras-chave que identifiquem a tarefa (não precisa do nome exato, use termos como "reunião", "dentista", "médico", etc.)
+- taskIdentifier: para update/delete - use palavras-chave que identifiquem a tarefa
 - title: título da tarefa (máximo 50 caracteres) - obrigatório para create
 - description: descrição detalhada (opcional)
 - scheduledDate: data no formato YYYY-MM-DD
@@ -53,20 +65,54 @@ REGRAS ESPECIAIS:
 - "marcar como concluído/feito" = action: "update", status: "completed"
 - Para update/delete, extraia a palavra-chave principal da tarefa mencionada
 
+{userTasksContext}
+
 Responda APENAS com JSON válido, sem texto adicional.`;
 
 function formatDate(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
+type UserTask = {
+    title: string;
+    scheduledDate?: string | null;
+    scheduledTime?: string | null;
+    status?: string;
+};
+
+function formatTasksContext(tasks: UserTask[]): string {
+    if (!tasks || tasks.length === 0) {
+        return "TAREFAS DO USUÁRIO: Nenhuma tarefa agendada.";
+    }
+
+    const futureTasks = tasks
+        .filter(t => t.scheduledDate && t.status !== 'completed' && t.status !== 'cancelled')
+        .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+
+    if (futureTasks.length === 0) {
+        return "TAREFAS DO USUÁRIO: Nenhuma tarefa pendente agendada.";
+    }
+
+    const taskList = futureTasks.map(t => {
+        const time = t.scheduledTime ? ` às ${t.scheduledTime}` : '';
+        return `- ${t.scheduledDate}${time}: ${t.title}`;
+    }).join('\n');
+
+    return `TAREFAS DO USUÁRIO (use para responder sobre disponibilidade):\n${taskList}`;
+}
+
 export async function parseAgentRequest(
     apiKey: string,
-    userMessage: string
+    userMessage: string,
+    userTasks?: UserTask[]
 ): Promise<{ success: true; data: GroqFullResponse; interpretations: string[] } | { success: false; error: string }> {
     const currentDate = new Date();
     const currentDateStr = formatDate(currentDate);
 
-    const systemPrompt = SYSTEM_PROMPT.replace("{currentDate}", currentDateStr);
+    const tasksContext = formatTasksContext(userTasks || []);
+    const systemPrompt = SYSTEM_PROMPT
+        .replace("{currentDate}", currentDateStr)
+        .replace("{userTasksContext}", tasksContext);
 
     try {
         const response = await fetch(GROQ_API_URL, {

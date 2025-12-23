@@ -2,7 +2,7 @@ import { OpenAPIRoute, Str } from "chanfana";
 import { z } from "zod";
 import type { AppContext, GroqAgentTask } from "../../types/types";
 import { parseAgentRequest, generateHumanizedInterpretation } from "../../services/groq";
-import { createTask, findTaskByTitle, updateTask, deleteTask } from "../../services/task";
+import { createTask, findTaskByTitle, updateTask, deleteTask, getTasksByUserId } from "../../services/task";
 import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
 import { TaskSchema, UnauthorizedResponse, BadRequestResponse, NotFoundResponse } from "../../schemas";
 
@@ -60,7 +60,10 @@ export class Schedule extends OpenAPIRoute {
             return c.json({ success: false, error: "GROQ_API_KEY não configurada" }, 500);
         }
 
-        const result = await parseAgentRequest(groqApiKey, userMessage);
+        // Busca as tarefas do usuário para contexto de disponibilidade
+        const userTasks = await getTasksByUserId(c.env.DB, auth.userId);
+
+        const result = await parseAgentRequest(groqApiKey, userMessage, userTasks);
 
         if (result.success === false) {
             return c.json({
