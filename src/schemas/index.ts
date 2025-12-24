@@ -1,5 +1,10 @@
 import { Str } from "chanfana";
 import { z } from "zod";
+import { VALIDATION } from "../config/constants";
+
+// ============================================
+// Error Responses
+// ============================================
 
 export const ErrorSchema = z.object({ error: Str() });
 
@@ -36,6 +41,40 @@ export const BadRequestResponse = {
     },
 };
 
+export const ForbiddenResponse = {
+    "403": {
+        description: "Forbidden",
+        content: {
+            "application/json": {
+                schema: ErrorSchema,
+            },
+        },
+    },
+};
+
+// ============================================
+// Common Validators
+// ============================================
+
+const emailValidator = z
+    .string()
+    .email("Email inválido")
+    .min(1, "Email é obrigatório");
+
+const passwordValidator = z
+    .string()
+    .min(VALIDATION.password.minLength, `Senha deve ter no mínimo ${VALIDATION.password.minLength} caracteres`)
+    .max(VALIDATION.password.maxLength, `Senha deve ter no máximo ${VALIDATION.password.maxLength} caracteres`);
+
+const nameValidator = z
+    .string()
+    .min(VALIDATION.name.minLength, `Nome deve ter no mínimo ${VALIDATION.name.minLength} caracteres`)
+    .max(VALIDATION.name.maxLength, `Nome deve ter no máximo ${VALIDATION.name.maxLength} caracteres`);
+
+// ============================================
+// Task Schemas
+// ============================================
+
 export const TaskSchema = z.object({
     id: Str(),
     title: Str(),
@@ -53,21 +92,33 @@ export const TaskWithUpdatedAtSchema = TaskSchema.extend({
 });
 
 export const TaskInputSchema = z.object({
-    title: Str({ example: "Reunião com equipe" }),
-    description: Str({ required: false, example: "Discutir planejamento" }),
+    title: z.string()
+        .min(1, "Título é obrigatório")
+        .max(VALIDATION.task.titleMaxLength, `Título deve ter no máximo ${VALIDATION.task.titleMaxLength} caracteres`),
+    description: z.string()
+        .max(VALIDATION.task.descriptionMaxLength, `Descrição deve ter no máximo ${VALIDATION.task.descriptionMaxLength} caracteres`)
+        .optional(),
     scheduledDate: Str({ required: false, example: "2025-12-25" }),
     scheduledTime: Str({ required: false, example: "14:00" }),
     priority: z.enum(["low", "medium", "high"]).optional(),
 });
 
 export const TaskUpdateSchema = z.object({
-    title: Str({ required: false, example: "Novo título" }),
-    description: Str({ required: false, example: "Nova descrição" }),
+    title: z.string()
+        .max(VALIDATION.task.titleMaxLength, `Título deve ter no máximo ${VALIDATION.task.titleMaxLength} caracteres`)
+        .optional(),
+    description: z.string()
+        .max(VALIDATION.task.descriptionMaxLength, `Descrição deve ter no máximo ${VALIDATION.task.descriptionMaxLength} caracteres`)
+        .optional(),
     scheduledDate: Str({ required: false, example: "2025-12-26" }),
     scheduledTime: Str({ required: false, example: "15:00" }),
     priority: z.enum(["low", "medium", "high"]).optional(),
     status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional(),
 });
+
+// ============================================
+// User Schemas
+// ============================================
 
 export const UserSchema = z.object({
     id: Str(),
@@ -81,23 +132,27 @@ export const UserSchema = z.object({
 });
 
 export const UserUpdateSchema = z.object({
-    name: Str({ required: false, example: "New Name" }),
-    email: Str({ required: false, example: "new@example.com" }),
-    password: Str({ required: false, example: "newPassword123" }),
-    profilePhoto: Str({ required: false, example: "https://example.com/photo.jpg" }),
-    coverPhoto: Str({ required: false, example: "https://example.com/cover.jpg" }),
-    bio: z.string().max(100, "Bio must be at most 100 characters").optional(),
+    name: nameValidator.optional(),
+    email: emailValidator.optional(),
+    password: passwordValidator.optional(),
+    profilePhoto: z.string().url("URL de foto inválida").optional(),
+    coverPhoto: z.string().url("URL de capa inválida").optional(),
+    bio: z.string().max(VALIDATION.bio.maxLength, `Bio deve ter no máximo ${VALIDATION.bio.maxLength} caracteres`).optional(),
 });
 
+// ============================================
+// Auth Schemas
+// ============================================
+
 export const LoginSchema = z.object({
-    email: Str({ example: "user@example.com" }),
-    password: Str({ example: "password123" }),
+    email: emailValidator,
+    password: z.string().min(1, "Senha é obrigatória"),
 });
 
 export const RegisterSchema = z.object({
-    name: Str({ example: "John Doe" }),
-    email: Str({ example: "user@example.com" }),
-    password: Str({ example: "password123" }),
+    name: nameValidator,
+    email: emailValidator,
+    password: passwordValidator,
 });
 
 export const TokenResponseSchema = z.object({
@@ -109,3 +164,4 @@ export const TokenResponseSchema = z.object({
         role: Str({ example: "free" }),
     }),
 });
+

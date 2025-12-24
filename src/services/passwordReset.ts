@@ -2,9 +2,12 @@ import { eq, and, gt } from "drizzle-orm";
 import { createDb, schema } from "../lib/drizzle";
 import { hashPassword } from "../lib/password";
 import type { ForgotPassword, ValidateToken, ResetPasswordRequest } from "../types/types";
+import { PASSWORD_RESET } from "../config/constants";
 
 function generateToken(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const min = Math.pow(10, PASSWORD_RESET.tokenLength - 1);
+    const max = Math.pow(10, PASSWORD_RESET.tokenLength) - 1;
+    return Math.floor(min + Math.random() * (max - min + 1)).toString();
 }
 
 export async function createPasswordResetToken(data: ForgotPassword) {
@@ -19,7 +22,7 @@ export async function createPasswordResetToken(data: ForgotPassword) {
     }
 
     const token = generateToken();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET.expiryMs).toISOString();
 
     await drizzle
         .update(schema.passwordResetToken)

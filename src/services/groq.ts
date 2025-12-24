@@ -1,7 +1,6 @@
 import type { GroqAgentTask, GroqFullResponse } from "../types/types";
 import { SYSTEM_PROMPT } from "../lib/system-prompt";
-
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+import { API } from "../config/constants";
 
 function formatDate(date: Date): string {
     return date.toISOString().split('T')[0];
@@ -49,20 +48,20 @@ export async function parseAgentRequest(
         .replace("{userTasksContext}", tasksContext);
 
     try {
-        const response = await fetch(GROQ_API_URL, {
+        const response = await fetch(API.groqUrl, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: API.groqModel,
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userMessage }
                 ],
-                temperature: 0.3,
-                max_tokens: 1000,
+                temperature: API.groqTemperature,
+                max_tokens: API.groqMaxTokens,
             }),
         });
 

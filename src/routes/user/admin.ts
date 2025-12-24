@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { AppContext } from "../../types/types";
 import { updateUser, deleteUser, findUserById } from "../../services/user";
 import { requireAuth, unauthorizedResponse } from "../../middlewares/auth";
-import { UserSchema, UnauthorizedResponse, NotFoundResponse } from "../../schemas";
+import { UserSchema, UnauthorizedResponse, NotFoundResponse, ForbiddenResponse } from "../../schemas";
+import { forbidden } from "../../lib/response";
 
 async function requireAdmin(c: AppContext) {
     const auth = await requireAuth(c);
@@ -15,13 +16,6 @@ async function requireAdmin(c: AppContext) {
     }
     return { userId: auth.userId };
 }
-
-const ForbiddenResponse = {
-    "403": {
-        description: "Forbidden",
-        content: { "application/json": { schema: z.object({ error: Str() }) } },
-    },
-};
 
 export class AdminGetUser extends OpenAPIRoute {
     schema = {
@@ -52,7 +46,7 @@ export class AdminGetUser extends OpenAPIRoute {
     async handle(c: AppContext) {
         const admin = await requireAdmin(c);
         if (admin.error === "auth") return unauthorizedResponse(c);
-        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
+        if (admin.error === "forbidden") return forbidden(c);
 
         const data = await this.getValidatedData<typeof this.schema>();
         const user = await findUserById(c.env.DB, data.params.userId);
@@ -130,7 +124,7 @@ export class AdminUpdateUser extends OpenAPIRoute {
     async handle(c: AppContext) {
         const admin = await requireAdmin(c);
         if (admin.error === "auth") return unauthorizedResponse(c);
-        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
+        if (admin.error === "forbidden") return forbidden(c);
 
         const data = await this.getValidatedData<typeof this.schema>();
 
@@ -183,7 +177,7 @@ export class AdminDeleteUser extends OpenAPIRoute {
     async handle(c: AppContext) {
         const admin = await requireAdmin(c);
         if (admin.error === "auth") return unauthorizedResponse(c);
-        if (admin.error === "forbidden") return c.json({ error: "Permissão insuficiente" }, 403);
+        if (admin.error === "forbidden") return forbidden(c);
 
         const data = await this.getValidatedData<typeof this.schema>();
         const deleted = await deleteUser({ db: c.env.DB, userId: data.params.userId });

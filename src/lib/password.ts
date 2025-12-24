@@ -1,6 +1,6 @@
-const ITERATIONS = 100000;
-const SALT_LENGTH = 16;
-const KEY_LENGTH = 32;
+import { PASSWORD_HASH } from "../config/constants";
+
+const { iterations: ITERATIONS, saltLength: SALT_LENGTH, keyLength: KEY_LENGTH, algorithm: HASH_ALGORITHM } = PASSWORD_HASH;
 
 
 export async function hashPassword(password: string): Promise<string> {
@@ -20,7 +20,7 @@ export async function hashPassword(password: string): Promise<string> {
             name: "PBKDF2",
             salt: salt,
             iterations: ITERATIONS,
-            hash: "SHA-256",
+            hash: HASH_ALGORITHM,
         },
         keyMaterial,
         KEY_LENGTH * 8
@@ -57,7 +57,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
             name: "PBKDF2",
             salt: salt,
             iterations: ITERATIONS,
-            hash: "SHA-256",
+            hash: HASH_ALGORITHM,
         },
         keyMaterial,
         KEY_LENGTH * 8

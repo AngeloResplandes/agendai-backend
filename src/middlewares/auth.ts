@@ -1,8 +1,17 @@
 import type { AppContext, JWTPayload } from "../types/types";
 import { verify } from "hono/jwt";
 import { findUserById } from "../services/user";
+import { unauthorized } from "../lib/response";
 
+/** Resultado da autenticação */
+export interface AuthResult {
+    userId: string;
+    userName: string;
+}
 
+/**
+ * Extrai o ID do usuário do token JWT no header Authorization
+ */
 export async function getUserIdFromToken(c: AppContext): Promise<string | null> {
     const authHeader = c.req.header("authorization");
     if (!authHeader) return null;
@@ -10,13 +19,20 @@ export async function getUserIdFromToken(c: AppContext): Promise<string | null> 
     const token = authHeader.split(" ")[1];
     if (!token) return null;
 
-    const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
-    if (!decoded) return null;
-    return decoded.id;
+    try {
+        const decoded = await verify(token, c.env.JWT_SECRET) as JWTPayload;
+        if (!decoded) return null;
+        return decoded.id;
+    } catch {
+        return null;
+    }
 }
 
-
-export async function requireAuth(c: AppContext): Promise<{ userId: string; userName: string } | null> {
+/**
+ * Verifica autenticação e retorna dados do usuário
+ * Retorna null se não autenticado ou usuário não existe
+ */
+export async function requireAuth(c: AppContext): Promise<AuthResult | null> {
     const userId = await getUserIdFromToken(c);
     if (!userId) {
         return null;
@@ -30,7 +46,10 @@ export async function requireAuth(c: AppContext): Promise<{ userId: string; user
     return { userId, userName: user.name };
 }
 
-
+/**
+ * Resposta padronizada de não autorizado
+ */
 export function unauthorizedResponse(c: AppContext) {
-    return c.json({ error: "Acesso negado" }, 401);
+    return unauthorized(c);
 }
+

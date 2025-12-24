@@ -3,18 +3,45 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { registerRoutes } from "./routes";
+import { ALLOWED_ORIGINS } from "./config/constants";
+import { createLogger } from "./lib/logger";
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Middleware de logging com request ID e timing
+app.use("*", async (c, next) => {
+	const requestId = crypto.randomUUID();
+	const startTime = Date.now();
+
+	// Adiciona request ID ao header de resposta
+	c.res.headers.set("X-Request-Id", requestId);
+
+	// Cria logger com contexto do request
+	const logger = createLogger({
+		requestId,
+		method: c.req.method,
+		path: c.req.path,
+	});
+
+	// Armazena logger e requestId no contexto para uso posterior
+	c.set("logger" as never, logger as never);
+	c.set("requestId" as never, requestId as never);
+
+	try {
+		await next();
+	} finally {
+		const duration = Date.now() - startTime;
+		logger.info("Request completed", {
+			status: c.res.status,
+			duration,
+		});
+	}
+});
+
+// CORS
 app.use("*", cors({
 	origin: (origin) => {
-		const allowedOrigins = [
-			"http://localhost:3000",
-			"http://localhost:5173",
-			"https://agendai-backend.angeloresplandes.workers.dev",
-			// Adicione o URL do seu frontend aqui
-		];
-		if (!origin || allowedOrigins.includes(origin)) {
+		if (!origin || ALLOWED_ORIGINS.includes(origin as typeof ALLOWED_ORIGINS[number])) {
 			return origin || "*";
 		}
 		return null;
@@ -26,6 +53,7 @@ app.use("*", cors({
 	maxAge: 86400,
 }));
 
+// Secure Headers
 app.use("*", secureHeaders({
 	xFrameOptions: "DENY",
 	xContentTypeOptions: "nosniff",
@@ -34,12 +62,6 @@ app.use("*", secureHeaders({
 	crossOriginResourcePolicy: false,
 	crossOriginOpenerPolicy: false,
 }));
-
-app.use("*", async (c, next) => {
-	const requestId = crypto.randomUUID();
-	c.res.headers.set("X-Request-Id", requestId);
-	await next();
-});
 
 const openapi = fromHono(app, {
 	docs_url: "/",
